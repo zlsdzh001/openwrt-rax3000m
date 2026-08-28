@@ -131,28 +131,33 @@ jobs:
 
     - name: 克隆源代码
       run: |
-        df -hT /workdir
-        git clone $REPO_URL /workdir/$SOURCE_NAME
-        ln -sfn /workdir/$SOURCE_NAME $GITHUB_WORKSPACE/$SOURCE_NAME
+        # 打印变量排查
+        echo "克隆仓库: $REPO_URL, 分支: $REPO_BRANCH"
         
+        # 克隆到本地 openwrt 目录
+        git clone --depth 1 -b $REPO_BRANCH $REPO_URL $SOURCE_NAME || git clone $REPO_URL $SOURCE_NAME
+        
+        # 校验 .git 是否存在
+        if [ ! -d "$SOURCE_NAME/.git" ]; then
+          echo "::error::克隆失败，未找到 $SOURCE_NAME/.git 目录！请检查仓库地址是否正确或是否为私有仓库。"
+          exit 1
+        fi
+
     - name: 切换分支
-      working-directory: /workdir
       run: |
         cd $SOURCE_NAME
         case $REPO_BRANCH in
           openwrt-25.12)
+            # 获取最新 tag，如果没有 tag 则保持当前分支
             _release_tag=$(git tag --sort=taggerdate --list 'v25.*' | tail -1)
-            # 如果没有匹配到 v25.* tag，则兜底切到分支本身
             if [ -n "$_release_tag" ]; then
               git checkout $_release_tag
             else
-              git checkout $REPO_BRANCH
               _release_tag="$REPO_BRANCH"
             fi
-            _prerelease=false
             ;;
           *)
-            git checkout $REPO_BRANCH || echo "Can't get branch $REPO_BRANCH"
+            git checkout $REPO_BRANCH || true
             _release_tag="$REPO_BRANCH"
             ;;
         esac
