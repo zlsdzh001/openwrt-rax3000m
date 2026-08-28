@@ -6,7 +6,21 @@ permissions:
 on:
   repository_dispatch:
   workflow_dispatch:
-    inputs:             
+    inputs:
+      DEVICE_TARGET:
+        description: '选择编译设备'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'rax3000m'
+          - 'rax3000me'
+          - 'rax3000m-emmc'
+          - 'rax3000m-nand'
+          - 'rax3000m-256m-nand'
+          - 'xr30-emmc'
+          - 'xr30-nand'
       OP_IP:
         description: '静态IP地址'     
         required: false
@@ -30,25 +44,51 @@ jobs:
   build_firmware:
     name: 编译固件 - ${{ matrix.device }} - ${{ matrix.source }}
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        device: ["rax3000m", "rax3000me", "rax3000m-emmc", "rax3000m-nand", "rax3000m-256m-nand", "xr30-emmc", "xr30-nand"]
-        source: ["openwrt"]
-        include:
-          - device: "rax3000m"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m=y"
-          - device: "rax3000me"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000me=y"
-          - device: "rax3000m-emmc"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc=y"
-          - device: "rax3000m-nand"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-nand=y"
-          - device: "rax3000m-256m-nand"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-256m-nand=y"
-          - device: "xr30-nand"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-nand=y"
-          - device: "xr30-emmc"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-emmc=y"
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          TARGET="${{ github.event.inputs.DEVICE_TARGET || 'all' }}"
+          
+          # 定义所有设备配置映射 (JSON)
+          ALL_CONFIGS='[
+            {"device": "rax3000m", "source": "openwrt", "config": "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m=y"},
+            {"device": "rax3000me", "source": "openwrt", "config": "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000me=y"},
+            {"device": "rax3000m-emmc", "source": "openwrt", "config": "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc=y"},
+            {"device": "rax3000m-nand", "source": "openwrt", "config": "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-nand=y"},
+            {"device": "rax3000m-256m-nand", "source": "openwrt", "config": "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-256m-nand=y"},
+            {"device": "xr30-emmc", "source": "openwrt", "config": "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-emmc=y"},
+            {"device": "xr30-nand", "source": "openwrt", "config": "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-nand=y"}
+          ]'
+          
+          if [ "$TARGET" = "all" ]; then
+            SELECTED_JSON="$ALL_CONFIGS"
+          else
+            SELECTED_JSON=$(echo "$ALL_CONFIGS" | jq -c "[.[] | select(.device == \"$TARGET\")]")
+          fi
+          
+          MATRIX_JSON=$(jq -c -n --argjson include "$SELECTED_JSON" '{include: $include}')
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+    # strategy:
+    #   matrix:
+    #     device: ["rax3000m", "rax3000me", "rax3000m-emmc", "rax3000m-nand", "rax3000m-256m-nand", "xr30-emmc", "xr30-nand"]
+    #     source: ["openwrt"]
+    #     include:
+    #       - device: "rax3000m"
+    #         config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m=y"
+    #       - device: "rax3000me"
+    #         config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000me=y"
+    #       - device: "rax3000m-emmc"
+    #         config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc=y"
+    #       - device: "rax3000m-nand"
+    #         config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-nand=y"
+    #       - device: "rax3000m-256m-nand"
+    #         config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_rax3000m-256m-nand=y"
+    #       - device: "xr30-nand"
+    #         config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-nand=y"
+    #       - device: "xr30-emmc"
+    #         config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-emmc=y"
 
     steps: 
     - name: 检查分支
