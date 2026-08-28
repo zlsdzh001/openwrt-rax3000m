@@ -130,26 +130,33 @@ jobs:
         echo "REPO_BRANCH=openwrt-25.12" >> $GITHUB_ENV
 
     - name: 克隆源代码
-      working-directory: /workdir
       run: |
-        df -hT $PWD
-        git clone $REPO_URL $SOURCE_NAME
-        ln -sf /workdir/$SOURCE_NAME $GITHUB_WORKSPACE/$SOURCE_NAME
+        df -hT /workdir
+        git clone $REPO_URL /workdir/$SOURCE_NAME
+        ln -sfn /workdir/$SOURCE_NAME $GITHUB_WORKSPACE/$SOURCE_NAME
         
     - name: 切换分支
+      working-directory: /workdir
       run: |
         cd $SOURCE_NAME
         case $REPO_BRANCH in
           openwrt-25.12)
             _release_tag=$(git tag --sort=taggerdate --list 'v25.*' | tail -1)
-            git checkout $_release_tag
+            # 如果没有匹配到 v25.* tag，则兜底切到分支本身
+            if [ -n "$_release_tag" ]; then
+              git checkout $_release_tag
+            else
+              git checkout $REPO_BRANCH
+              _release_tag="$REPO_BRANCH"
+            fi
             _prerelease=false
             ;;
           *)
-            echo "Can't get local/upstream's branch/tags"
+            git checkout $REPO_BRANCH || echo "Can't get branch $REPO_BRANCH"
+            _release_tag="$REPO_BRANCH"
             ;;
         esac
-        echo "release_tag=$_release_tag" >> $GITHUB_ENV  
+        echo "release_tag=$_release_tag" >> $GITHUB_ENV
         
     - name: 取回缓存 staging_dir
       uses: actions/cache@v5
