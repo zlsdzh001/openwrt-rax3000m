@@ -239,3 +239,28 @@ CONFIG_PACKAGE_luci-app-mtwifi-cfg=y
 CONFIG_PACKAGE_luci-app-turboacc-mtk=y
 CONFIG_PACKAGE_my-default-settings=y
 
+# 开启高级开发选项以暴露内核调试配置
+CONFIG_DEVEL=y
+
+# 启用完整调试信息与 BTF 生成 (dae 的 CO-RE 核心依赖)
+CONFIG_KERNEL_DEBUG_INFO=y
+# CONFIG_KERNEL_DEBUG_INFO_REDUCED is not set
+CONFIG_KERNEL_DEBUG_INFO_BTF=y
+
+# 启用 Control Group 与 BPF 支持
+CONFIG_KERNEL_CGROUPS=y
+CONFIG_KERNEL_CGROUP_BPF=y
+CONFIG_KERNEL_BPF_EVENTS=y
+
+# 流量控制与 eBPF 调度模块
+CONFIG_PACKAGE_kmod-sched-core=y
+CONFIG_PACKAGE_kmod-sched-bpf=y
+CONFIG_PACKAGE_kmod-sched-act-bpf=y
+
+# 虚拟网卡与透明代理模块
+CONFIG_PACKAGE_kmod-veth=y
+CONFIG_PACKAGE_kmod-ipt-tproxy=y
+CONFIG_PACKAGE_kmod-nft-tproxy=y
+
+# 规则与订阅下载组件 (必选)
+CONFIG_PACKAGE_curl=y
